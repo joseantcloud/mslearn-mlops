@@ -28,16 +28,32 @@ jobs:
 
       - name: Install Azure Machine Learning extension
         run: |
-          az extension add --name ml --yes
+          az extension add --name ml --upgrade --yes
 
       - name: Validate Azure connection
         run: |
           az account show --output table
 
+      - name: Inspect job configuration
+        run: |
+          echo "Repository directory:"
+          pwd
+
+          echo "job.yml:"
+          cat job.yml
+
+          echo "Check invalid placeholders:"
+          grep -RIn --exclude-dir=.git \
+            "uri_file_or_uri_folder" . || true
+
+          echo "Check training script:"
+          test -f src/train-model-parameters.py
+          ls -la src
+
       - name: Run Azure Machine Learning training job
         run: |
           az ml job create \
-            --file src/job.yml \
+            --file job.yml \
             --resource-group "${{ inputs.resource_group }}" \
             --workspace-name "${{ inputs.workspace_name }}" \
             --stream
