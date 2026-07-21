@@ -21,6 +21,28 @@ jobs:
       - name: Check out repository
         uses: actions/checkout@v4
 
+      - name: Inspect checked-out repository
+        run: |
+          echo "Branch/ref: $GITHUB_REF"
+          echo "Commit: $GITHUB_SHA"
+          git log -1 --oneline
+
+          echo "Current directory:"
+          pwd
+
+          echo "Contents of src/job.yml:"
+          sed -n '1,160p' src/job.yml
+
+          echo "Searching for invalid placeholders:"
+          if grep -RIn --exclude-dir=.git \
+            "uri_file_or_uri_folder" .; then
+            echo "::error::An unresolved uri_file_or_uri_folder placeholder exists"
+            exit 1
+          fi
+
+          echo "Checking training script:"
+          test -f src/train-model-parameters.py
+
       - name: Azure login
         uses: azure/login@v3
         with:
@@ -34,26 +56,10 @@ jobs:
         run: |
           az account show --output table
 
-      - name: Inspect job configuration
-        run: |
-          echo "Repository directory:"
-          pwd
-
-          echo "job.yml:"
-          cat job.yml
-
-          echo "Check invalid placeholders:"
-          grep -RIn --exclude-dir=.git \
-            "uri_file_or_uri_folder" . || true
-
-          echo "Check training script:"
-          test -f src/train-model-parameters.py
-          ls -la src
-
       - name: Run Azure Machine Learning training job
         run: |
           az ml job create \
-            --file job.yml \
+            --file src/job.yml \
             --resource-group "${{ inputs.resource_group }}" \
             --workspace-name "${{ inputs.workspace_name }}" \
             --stream
